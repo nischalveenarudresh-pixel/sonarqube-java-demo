@@ -1,10 +1,10 @@
-
 pipeline {
     agent {
         label 'agent1'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -12,30 +12,40 @@ pipeline {
             }
         }
 
-        
-
-
-stage('Sonar Analysis') {
-    steps {
-        withSonarQubeEnv('SonarQube-Server') {
-            sh '''
-                mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
-                  -Dsonar.projectKey=DevOps-Java-App \
-                  -Dsonar.projectName=DevOps-Java-App \
-                  -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-            '''
+        stage('Sonar Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube-Server') {
+                    sh '''
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
+                          -Dsonar.projectKey=DevOps-Java-App \
+                          -Dsonar.projectName=DevOps-Java-App \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    '''
+                }
+            }
         }
-    }
-}
 
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
 
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted: Quality Gate FAILED!"
+                        }
 
+                        echo "Quality Gate PASSED!"
+                    }
+                }
+            }
+        }
 
         stage('Build') {
             steps {
                 sh 'mvn clean package'
             }
         }
+
     }
 }
-
