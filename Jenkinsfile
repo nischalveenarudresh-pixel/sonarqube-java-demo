@@ -20,7 +20,7 @@ stage('Sonar Analysis') {
         withSonarQubeEnv('SonarQube-Server') {
             sh '''
                 mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
-                  -Dsonar.projectKey=devops-java-app \
+                  -Dsonar.projectKey=DevOps-Java-App \
                   -Dsonar.projectName=DevOps-Java-App \
                   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
             '''
