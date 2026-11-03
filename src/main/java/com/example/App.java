@@ -9,4 +9,8 @@ public class App {
     public static void main(String[] args) {
         System.out.println("SonarQube Demo Application");
     }
+
+    public static void calculate() {
+        int unusedVariable = 100;
+    }
 }
