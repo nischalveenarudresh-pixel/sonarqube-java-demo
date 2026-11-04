@@ -46,7 +46,9 @@ class AppTest {
     }
 
     @Test
-    void testConstructor() {
-        new App();
-    }
+void testConstructor() {
+    App app = new App();
+
+    assertEquals(App.class, app.getClass());
+}
 }
