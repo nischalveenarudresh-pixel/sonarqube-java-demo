@@ -12,7 +12,7 @@ pipeline {
             }
         }
 
-        stage('Verify') {
+        stage('Verify for Jacoco') {
             steps {
                 sh 'mvn clean verify'
             }
