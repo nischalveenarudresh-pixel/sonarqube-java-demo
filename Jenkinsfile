@@ -12,6 +12,12 @@ pipeline {
             }
         }
 
+         stage('Build and Test') {
+            steps {
+                sh 'mvn clean verify'
+            }
+        }
+
         stage('Sonar Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube-Server') {
