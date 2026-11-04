@@ -6,7 +6,19 @@ public class App {
         return a + b;
     }
 
-    public static void main(String[] args) {
-        System.out.println("SonarQube Demo Application");
+    public static int subtract(int a, int b) {
+        return a - b;
+    }
+
+    public static int multiply(int a, int b) {
+        return a * b;
+    }
+
+    public static int divide(int a, int b) {
+        return a / b;
+    }
+
+    public static int square(int a) {
+        return a * a;
     }
 }
