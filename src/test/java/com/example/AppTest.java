@@ -27,7 +27,6 @@ class AppTest {
 
     @Test
     void testMain() {
-
         PrintStream originalOut = System.out;
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
@@ -47,8 +46,7 @@ class AppTest {
     }
 
     @Test
-    void testMainAgain() {
-
-        App.main(new String[]{});
+    void testConstructor() {
+        new App();
     }
 }
