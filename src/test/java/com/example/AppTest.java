@@ -45,4 +45,10 @@ class AppTest {
             System.setOut(originalOut);
         }
     }
+
+    @Test
+    void testMainAgain() {
+
+        App.main(new String[]{});
+    }
 }
