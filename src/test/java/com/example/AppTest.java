@@ -1,25 +1,12 @@
 package com.example;
 
-public class AppTest {
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class AppTest {
 
     @Test
-    public static int add(int a, int b) {
-        return a + b;
-    }
-
-    public static int subtract(int a, int b) {
-        return a - b;
-    }
-
-    public static int multiply(int a, int b) {
-        return a * b;
-    }
-
-    public static int divide(int a, int b) {
-        return a / b;
-    }
-
-    public static void main(String[] args) {
-        System.out.println("SonarQube Demo Application");
+    void testAdd() {
+        assertEquals(10, App.add(5, 5));
     }
 }
