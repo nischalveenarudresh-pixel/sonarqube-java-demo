@@ -49,5 +49,39 @@ pipeline {
             }
         }
 
+        
+stage('Upload WAR to Nexus') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'nexus-creds',
+                usernameVariable: 'NEXUS_USERNAME',
+                passwordVariable: 'NEXUS_PASSWORD'
+            )
+        ]) {
+            sh '''
+                SETTINGS=$(mktemp)
+
+                trap 'rm -f "$SETTINGS"' EXIT
+
+                cat > "$SETTINGS" <<EOF
+<settings>
+    <servers>
+        <server>
+            <id>nexus-releases</id>
+            <username>${NEXUS_USERNAME}</username>
+            <password>${NEXUS_PASSWORD}</password>
+        </server>
+    </servers>
+</settings>
+EOF
+
+                mvn -s "$SETTINGS" deploy -DskipTests
+            '''
+        }
+    }
+}
+
+
     }
 }
