@@ -83,5 +83,81 @@ EOF
 }
 
 
+      
+stage('Deploy to Tomcat') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'nexus-creds',
+                usernameVariable: 'NEXUS_USERNAME',
+                passwordVariable: 'NEXUS_PASSWORD'
+            ),
+            sshUserPrivateKey(
+                credentialsId: 'tomcat-ssh',
+                keyFileVariable: 'SSH_KEY',
+                usernameVariable: 'SSH_USER'
+            )
+        ]) {
+            sh '''
+                set +x
+                umask 077
+
+                SETTINGS=$(mktemp)
+                trap 'rm -f "$SETTINGS"' EXIT
+
+                cat > "$SETTINGS" <<EOF
+<settings>
+    <servers>
+        <server>
+            <id>nexus-snapshots</id>
+            <username>${NEXUS_USERNAME}</username>
+            <password>${NEXUS_PASSWORD}</password>
+        </server>
+    </servers>
+</settings>
+EOF
+
+                # Download WAR from Nexus
+                mvn -s "$SETTINGS" \
+                  org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get \
+                  -Dartifact=com.example:sonarqube-java-demo:1.0-SNAPSHOT:war \
+                  -DremoteRepositories=nexus-snapshots::default::http://172.31.6.141:8081/repository/maven-snapshots/
+
+                # Find downloaded WAR
+                WAR=$(find "$HOME/.m2/repository/com/example/sonarqube-java-demo/1.0-SNAPSHOT" \
+                      -name '*.war' -type f | head -1)
+
+                test -n "$WAR"
+
+                # Transfer WAR to Tomcat EC2
+                scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
+                    "$WAR" "$SSH_USER@172.31.17.76:/tmp/sonarqube-java-demo.war"
+
+                # Stop Tomcat, deploy WAR, restart Tomcat
+                ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
+                    "$SSH_USER@172.31.17.76" <<'REMOTE'
+
+sudo systemctl stop tomcat
+
+sudo rm -rf /opt/tomcat/webapps/sonarqube-java-demo
+
+sudo install -o tomcat -g tomcat -m 0644 \
+    /tmp/sonarqube-java-demo.war \
+    /opt/tomcat/webapps/sonarqube-java-demo.war
+
+sudo rm -f /tmp/sonarqube-java-demo.war
+
+sudo systemctl start tomcat
+
+sudo systemctl status tomcat --no-pager
+
+REMOTE
+            '''
+        }
+    }
+}
+  
+
+
     }
 }
