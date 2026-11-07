@@ -68,7 +68,7 @@ stage('Upload WAR to Nexus') {
 <settings>
     <servers>
         <server>
-            <id>nexus-releases</id>
+            <id>nexus-snapshots</id>
             <username>${NEXUS_USERNAME}</username>
             <password>${NEXUS_PASSWORD}</password>
         </server>
