@@ -1,0 +1,136 @@
+
+pipeline {
+
+    agent {
+        label 'agent1'
+    }
+
+    environment {
+        AWS_REGION = 'ap-southeast-2'
+        ECR_REPO  = 'sonarqube-java-demo'
+        IMAGE_NAME = 'sonarqube-java-demo'
+        DEPLOY_HOST = '172.31.17.76'
+        DEPLOY_USER = 'ec2-user'
+    }
+
+    stages {
+
+        // 1. Checkout
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/nischalveenarudresh-pixel/sonarqube-java-demo.git'
+            }
+        }
+
+        // 2. Build and Test
+        stage('Build') {
+            steps {
+                sh 'mvn clean verify'
+            }
+        }
+
+        // 3. Sonar Analysis
+        stage('Sonar Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube-Server') {
+                    sh '''
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
+                          -Dsonar.projectKey=DevOps-Java-App \
+                          -Dsonar.projectName=DevOps-Java-App \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    '''
+                }
+
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
+
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted: Quality Gate FAILED!"
+                        }
+
+                        echo "Quality Gate PASSED!"
+                    }
+                }
+            }
+        }
+
+        // 4. Docker Build
+        stage('Docker Build') {
+            steps {
+                script {
+                    env.AWS_ACCOUNT_ID = sh(
+                        script: 'aws sts get-caller-identity --query Account --output text',
+                        returnStdout: true
+                    ).trim()
+
+                    env.ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+                    env.IMAGE_TAG = "${BUILD_NUMBER}"
+
+                    sh '''
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_URI}:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
+
+        // 5. Push Docker Image to ECR
+        stage('Push to ECR') {
+            steps {
+                sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} |
+                    docker login --username AWS --password-stdin \
+                    ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+                    docker push ${ECR_URI}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        // 6. Deploy to EC2
+        stage('Deploy to EC2') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'tomcat-ssh',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
+                    sh '''
+                        set -e
+
+                        ssh -i "$SSH_KEY" \
+                            -o StrictHostKeyChecking=accept-new \
+                            ${SSH_USER}@${DEPLOY_HOST} \
+                            "aws ecr get-login-password --region ${AWS_REGION} |
+                             sudo docker login --username AWS --password-stdin \
+                             ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+                        ssh -i "$SSH_KEY" \
+                            -o StrictHostKeyChecking=accept-new \
+                            ${SSH_USER}@${DEPLOY_HOST} \
+                            "sudo docker pull ${ECR_URI}:${IMAGE_TAG} &&
+                             sudo docker stop ${IMAGE_NAME} || true"
+
+                        ssh -i "$SSH_KEY" \
+                            -o StrictHostKeyChecking=accept-new \
+                            ${SSH_USER}@${DEPLOY_HOST} \
+                            "sudo docker rm ${IMAGE_NAME} || true"
+
+                        ssh -i "$SSH_KEY" \
+                            -o StrictHostKeyChecking=accept-new \
+                            ${SSH_USER}@${DEPLOY_HOST} \
+                            "sudo docker run -d \
+                             --name ${IMAGE_NAME} \
+                             --restart always \
+                             -p 8080:8080 \
+                             ${ECR_URI}:${IMAGE_TAG}"
+                    '''
+                }
+            }
+        }
+    }
+}
