@@ -61,7 +61,7 @@ stage('Deploy to Tomcat') {
             sh '''
                # Transfer WAR to Tomcat EC2
                 scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
-                    "/home/ec2-user/workspace/SonarQube-Java-Pipeline-Without-Nexus/target/sonarqube-java-demo-1.0-SNAPSHOT.war" "$SSH_USER@172.31.17.76:/tmp/sonarqube-java-demo.war"
+                    "/home/ec2-user/jenkins/workspace/SonarQube-Java-Pipeline-Without-Nexus/target/sonarqube-java-demo-1.0-SNAPSHOT.war" "$SSH_USER@172.31.17.76:/tmp/sonarqube-java-demo.war"
 
                 # Stop Tomcat, deploy WAR, restart Tomcat
                 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
