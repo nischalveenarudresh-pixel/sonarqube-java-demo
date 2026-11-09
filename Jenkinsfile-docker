@@ -1,4 +1,4 @@
-
+```groovy
 pipeline {
 
     agent {
@@ -57,6 +57,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
+                    env.IMAGE_NAME = 'sonarqube-java-demo'
                     env.ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
                     env.IMAGE_TAG = "${BUILD_NUMBER}"
 
@@ -126,3 +127,4 @@ pipeline {
         }
     }
 }
+```
