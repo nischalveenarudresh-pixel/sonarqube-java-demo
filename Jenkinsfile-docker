@@ -5,14 +5,6 @@ pipeline {
         label 'agent1'
     }
 
-    environment {
-        AWS_REGION = 'ap-southeast-2'
-        ECR_REPO  = 'sonarqube-java-demo'
-        IMAGE_NAME = 'sonarqube-java-demo'
-        DEPLOY_HOST = '172.31.17.76'
-        DEPLOY_USER = 'ec2-user'
-    }
-
     stages {
 
         // 1. Checkout
