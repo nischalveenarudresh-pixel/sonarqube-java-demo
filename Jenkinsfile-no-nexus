@@ -1,0 +1,93 @@
+pipeline {
+    agent {
+        label 'agent1'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/nischalveenarudresh-pixel/sonarqube-java-demo.git'
+            }
+        }
+
+         stage('Build and Test') {
+            steps {
+                sh 'mvn clean verify'
+            }
+        }
+
+        stage('Sonar Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube-Server') {
+                    sh '''
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
+                          -Dsonar.projectKey=DevOps-Java-App \
+                          -Dsonar.projectName=DevOps-Java-App \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    '''
+                }
+
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
+
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted: Quality Gate FAILED!"
+                        }
+
+                        echo "Quality Gate PASSED!"
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+      
+stage('Deploy to Tomcat') {
+    steps {
+        withCredentials([
+            sshUserPrivateKey(
+                credentialsId: 'tomcat-ssh',
+                keyFileVariable: 'SSH_KEY',
+                usernameVariable: 'SSH_USER'
+            )
+        ]) {
+            sh '''
+               # Transfer WAR to Tomcat EC2
+                scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
+                    "/home/ec2-user//workspace/SonarQube-Java-Pipeline/target/sonarqube-java-demo-1.0-SNAPSHOT.war" "$SSH_USER@172.31.17.76:/tmp/sonarqube-java-demo.war"
+
+                # Stop Tomcat, deploy WAR, restart Tomcat
+                ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
+                    "$SSH_USER@172.31.17.76" <<'REMOTE'
+
+sudo systemctl stop tomcat
+
+sudo rm -rf /opt/tomcat/webapps/sonarqube-java-demo
+
+sudo install -o tomcat -g tomcat -m 0644 \
+    /tmp/sonarqube-java-demo.war \
+    /opt/tomcat/webapps/sonarqube-java-demo.war
+
+sudo rm -f /tmp/sonarqube-java-demo.war
+
+sudo systemctl start tomcat
+
+sudo systemctl status tomcat --no-pager
+
+REMOTE
+            '''
+        }
+    }
+}
+  
+
+
+    }
+}
