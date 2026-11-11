@@ -92,6 +92,7 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        ##If the command fails exit the shell immediately(-e)
                         set -e
 
                         ssh -i "$SSH_KEY" \
